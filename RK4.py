@@ -64,10 +64,10 @@ def btnGraficar():
         if not valores_x or not valores_y:
             messagebox.showwarning("Sin datos", "Debe calcular los valores antes de graficar.")
         else:
-            plt.figure("Gráfica del método de Euler")
+            plt.figure("Gráfica del método RK4")
             plt.plot(valores_x, valores_y, marker='o', color='cyan', label='Aproximación')
             plt.plot(valores_x, y_solucion, marker='o', color='red', label='Valor real')
-            plt.title("Comparación Método de Euler")
+            plt.title("Comparación Método RK4")
             plt.xlabel("x")
             plt.ylabel("y")
             plt.grid(True, linestyle='--', alpha=0.6)
@@ -84,21 +84,20 @@ def btnCalcular():
         y0=float(y0_aux)
         h=float(entry_h.get())
         xf=float(entry_xf.get())
-        if h < 0:
-            messagebox.showerror("Error","El tamaño de paso debe ser mayor que 0")
-        if xf < x0:
-            messagebox.showerror("Error","El valor de x final debe ser mayor al valor de x₀")
+
+        if h<0:
+            messagebox.showerror("Error", "El tamaño de paso debe ser mayor que 0.")
+        if xf<x0:
+            messagebox.showerror("Error", "El valor de x final debe ser mayor al valor de x₀.")
 
         calcular(x0, y0, xf, h, funcion)
         
     except ValueError:
-        messagebox.showerror("Error", "Ingrese los campos")
+        messagebox.showerror("Error", "Ingrese los campos.")
     except SyntaxError:
-        messagebox.showerror("Error", "Ingrese una función válida.")
-    except TypeError:
-        messagebox.showerror("Error", "Ingrese una función valida")
+        messagebox.showerror("Error", "Ingrese una función valida.")
     except ZeroDivisionError:
-        messagebox.showerror("Error", "La ED no es continua en algun punto del intervalo ingresado")
+        messagebox.showerror("Error", "La ED no es continua en algun punto del intervalo ingresado.")
       
 def calcular(x0, y0, xf, h, funcion):
     for widget in frame_tabla.winfo_children():
@@ -119,9 +118,10 @@ def calcular(x0, y0, xf, h, funcion):
         edo=Eq(g(x).diff(x), func.subs(y, g(x)))
         sol=dsolve(edo, g(x), ics={g(x0): y0})
         expr=sol.rhs
-        tiene_solucion = not expr.has(Integral)
+
+        tiene_solucion=not expr.has(Integral)
     except:
-        tiene_solucion = False
+        tiene_solucion=False
   
 
     #--función simbólica--
@@ -129,20 +129,14 @@ def calcular(x0, y0, xf, h, funcion):
 
     #--función solución--
     if tiene_solucion:
-        s = lambdify(x, expr, "numpy")
+        s=lambdify(x, expr, "numpy")
     else:
-        s = None
-        messagebox.showinfo(
-        "Aviso",
-        "La ecuación diferencial no tiene solución analítica.\n"
-        "Se mostrará solo la aproximación numérica."
-        )
+        s=None
+        messagebox.showinfo("Aviso", "La ecuación diferencial no tiene solución analítica.\n" "Se mostrará solo la aproximación numérica.")
 
     valores_x.append(x0)
     valores_y.append(y0)
     y_solucion.append(y0)
-    error_abs.append(0)
-    error_rel.append(0)
     
     #--calcular aproximacion--
     for i in range(n):
@@ -156,14 +150,12 @@ def calcular(x0, y0, xf, h, funcion):
         k4=f(valores_x[i]+h, valores_y[i]+h*k3)
         y_actual=valores_y[i] + ((1/6)*h)*(k1 + 2*k2 + 2*k3 + k4)
         valores_y.append(y_actual)
+
         if s is not None:
             y_solucion.append(s(x_actual))
-            ea = abs(y_solucion[i] - valores_y[i])
-            er = abs(ea / valores_y[i]) * 100 if valores_y[i] != 0 else 0
-        else:
-            y_solucion.append(None)
-            ea = None
-            er = None
+    
+    if tiene_solucion:
+        calcularErrores(n)
     
     #--crear tabla--
     tabla=ttk.Treeview(frame_tabla, columns=("iteracion","x", "y", "valor_real", "error_absoluto","error_relativo"), show="headings", height=8)
@@ -183,18 +175,22 @@ def calcular(x0, y0, xf, h, funcion):
     
     #--insertar resultados en la tabla--
     for i in range(n+1):
-        valor_real = round(y_solucion[i],4) if y_solucion[i] is not None else "---"
-        error_a = round(ea,4) if ea is not None else "---"
-        error_r = round(er,4) if er is not None else "---"
-        tabla.insert("", "end", values=(i, round(valores_x[i], 4), round(valores_y[i], 4), valor_real, error_a, error_r))
+        tabla.insert("", "end", values=(i, round(valores_x[i], 4), round(valores_y[i], 4), (round(y_solucion[i], 4) if s is not None else "---"), (round(error_abs[i], 4) if s is not None else "---"), (round(error_rel[i], 4) if s is not None else "---")))
     
     tabla.pack(fill="both", expand=True)
 
 def convertirFuncion(txt):
-	trnsf=standard_transformations+(implicit_multiplication_application, convert_xor)
-	expr=parse_expr(txt, transformations=trnsf)
-	return expr
+    trnsf=standard_transformations+(implicit_multiplication_application, convert_xor)
+    expr=parse_expr(txt, transformations=trnsf)
+    return expr
 
+def calcularErrores(n):
+    for i in range(n+1):
+        error_abs.append(abs(y_solucion[i]-valores_y[i]))
+        if y_solucion[i] == 0:
+            error_rel.append(0)
+        else:
+            error_rel.append(abs((y_solucion[i]-valores_y[i])/y_solucion[i]))
 
 # - - - COMPONENTES - - -
 
@@ -263,12 +259,12 @@ frame_botones.grid_columnconfigure(3, weight=1)
 frame_tabla=ctk.CTkFrame(ventana, fg_color=AzulFuerte, bg_color=Azul, corner_radius=10, border_width=2, border_color=AzulFuerte)
 frame_tabla.grid(row=3, column=0, columnspan=2, pady=(10, 20), padx=20, ipadx=10, ipady=10, sticky="nsew")
 
-# --- ToolTip para ingresar la función ---
+#--tooltip funcion--
 class ToolTip:
     def __init__(self, widget, text):
-        self.widget = widget
-        self.text = text
-        self.tooltip = None
+        self.widget=widget
+        self.text=text
+        self.tooltip=None
 
         widget.bind("<Enter>", self.mostrar)
         widget.bind("<Leave>", self.ocultar)
@@ -277,14 +273,14 @@ class ToolTip:
         if self.tooltip:
             return
 
-        x = self.widget.winfo_rootx() + 20
-        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        x=self.widget.winfo_rootx()+20
+        y=self.widget.winfo_rooty()+self.widget.winfo_height()+5
 
-        self.tooltip = ctk.CTkToplevel(self.widget)
+        self.tooltip=ctk.CTkToplevel(self.widget)
         self.tooltip.overrideredirect(True)
         self.tooltip.geometry(f"+{x}+{y}")
 
-        label = ctk.CTkLabel(
+        label=ctk.CTkLabel(
             self.tooltip,
             text=self.text,
             justify="left",
@@ -295,14 +291,15 @@ class ToolTip:
             pady=8,
             font=("Leelawadee UI", 11)
         )
+
         label.pack()
 
     def ocultar(self, event=None):
         if self.tooltip:
             self.tooltip.destroy()
-            self.tooltip = None
+            self.tooltip=None
             
-mensaje_funcion = (
+mensaje_funcion=(
     "Use:\n"
     "  sin(x), cos(x), exp(x), log(x), sqrt(x)\n\n"
     "Se permite multiplicación implícita:\n"
